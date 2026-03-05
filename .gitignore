@@ -1,0 +1,21 @@
+# Android/Gradle
+*.iml
+.gradle/
+local.properties
+.idea/
+*.class
+*.log
+*.jar
+build/
+/captures
+.externalNativeBuild/
+.cxx/
+output.json
+
+# macOS
+.DS_Store
+
+# APK files (build artifacts)
+*.apk
+*.ap_
+*.aab
