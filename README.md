@@ -1,6 +1,6 @@
 # Kiosk App Lite
 
-A minimal, open-source Android kiosk launcher that locks a device to a single app. Built for POS terminals, kiosks, digital signage, and any scenario where you need to restrict a device to one application.
+A minimal, open-source **Android** kiosk launcher that locks a device to a single app. Built for POS terminals, kiosks, digital signage, and any scenario where you need to restrict an Android device to one application.
 
 **No root. No Device Owner. No trial. No watermark. Just works.**
 
@@ -17,13 +17,38 @@ A minimal, open-source Android kiosk launcher that locks a device to a single ap
 | <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/shield-check.svg" width="18" /> **ADB-Safe** | Does NOT use Device Owner/Admin — ADB always remains accessible |
 | <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/package.svg" width="18" /> **Tiny Footprint** | ~1.6 MB APK, minimal resource usage |
 
-## Compatibility
+## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/android-logo.svg" width="20" /> Android Compatibility
 
-- **Android 6.0+** (API 23+)
-- Tested on **Sunmi T2** POS terminal (Android 7.1.1)
-- Works on any Android device — tablets, phones, POS terminals, digital signage
+| Android Version | API Level | Supported |
+|---|---|---|
+| Android 6.0 Marshmallow | API 23 | ✅ |
+| Android 7.0–7.1 Nougat | API 24–25 | ✅ Tested |
+| Android 8.0–8.1 Oreo | API 26–27 | ✅ |
+| Android 9 Pie | API 28 | ✅ |
+| Android 10 | API 29 | ✅ |
+| Android 11 | API 30 | ✅ |
+| Android 12–12L | API 31–32 | ✅ |
+| Android 13+ | API 33+ | ✅ |
 
-## Quick Start
+> **Minimum:** Android 6.0 (API 23) &nbsp;·&nbsp; **Target:** Android 12 (API 32)
+>
+> Tested on **Sunmi T2** POS terminal (Android 7.1.1). Works on any Android device — tablets, phones, POS terminals, digital signage displays.
+
+## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/monitor.svg" width="20" /> UI Wireframe
+
+The kiosk operates in a simple 3-state flow:
+
+<p align="center">
+  <img src="docs/wireframe.png" alt="Kiosk App Lite — UI Wireframe" width="700" />
+</p>
+
+| State | Description |
+|---|---|
+| **Boot / Home Press** | Brief transition screen shown when device boots or user presses Home. Immediately launches the target app. |
+| **Target App Running** | The locked app runs fullscreen. Status bar stays accessible for WiFi/Bluetooth. The bottom-right corner is the hidden exit zone. |
+| **PIN Exit Dialog** | After 5 quick taps in the bottom-right corner, a PIN dialog appears. Correct PIN exits kiosk mode. |
+
+## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/rocket-launch.svg" width="20" /> Quick Start
 
 ### 1. Install via ADB
 
@@ -61,14 +86,14 @@ adb shell am broadcast -a com.sunmikiosk.launcher.SET_PIN \
   -n com.sunmikiosk.launcher/.ConfigReceiver
 ```
 
-## Exiting Kiosk Mode
+## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/sign-out.svg" width="20" /> Exiting Kiosk Mode
 
 1. **Tap 5 times quickly** in the **bottom-right corner** of the screen
 2. A PIN dialog will appear
 3. Enter the PIN (default: `1234`)
 4. Kiosk mode is disabled — you return to the normal Android home screen
 
-## Build from Source
+## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/wrench.svg" width="20" /> Build from Source
 
 ### Prerequisites
 - Java JDK 11+ (or 17)
@@ -91,7 +116,7 @@ The APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Architecture
+## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/tree-structure.svg" width="20" /> Architecture
 
 ```
 app/src/main/java/com/sunmikiosk/launcher/
@@ -117,11 +142,11 @@ Many kiosk apps require `dpm set-device-owner`, which gives them system-level co
 
 Kiosk App Lite takes a deliberately simpler approach: it's just a launcher. It doesn't need — and doesn't request — any special permissions beyond `RECEIVE_BOOT_COMPLETED`.
 
-## Contributing
+## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/git-merge.svg" width="20" /> Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
-## License
+## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/scales.svg" width="20" /> License
 
 This project is licensed under the [MIT License](LICENSE).
 
