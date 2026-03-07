@@ -324,8 +324,20 @@ public class SettingsActivity extends Activity {
 
         Toast.makeText(this, "Saved! Activating kiosk…", Toast.LENGTH_SHORT).show();
 
-        // Return to KioskActivity which will launch the target app
-        finish();
+        // Clear any cached launcher preferences
+        getPackageManager().clearPackagePreferredActivities(getPackageName());
+
+        // Show an alert telling the user they MUST select Kiosk App Lite as Home
+        new AlertDialog.Builder(this)
+                .setTitle("Set Default Launcher")
+                .setMessage("To activate kiosk mode, you must select \"Kiosk App Lite\" as your Home app on the next screen.")
+                .setPositiveButton("Open Settings", (d, w) -> {
+                    // Open the system Home settings page
+                    Intent homeSettings = new Intent(android.provider.Settings.ACTION_HOME_SETTINGS);
+                    startActivity(homeSettings);
+                })
+                .setCancelable(false)
+                .show();
     }
 
     // ── UI Helpers ──────────────────────────────────────────
