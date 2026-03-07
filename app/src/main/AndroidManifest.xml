@@ -23,6 +23,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Settings UI -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+
         <!-- Auto-start on device boot -->
         <receiver
             android:name=".BootReceiver"

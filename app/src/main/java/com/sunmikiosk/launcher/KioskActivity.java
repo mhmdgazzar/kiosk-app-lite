@@ -110,9 +110,16 @@ public class KioskActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+
+        // On first launch, show settings to let user configure target app
+        boolean configured = prefs.getBoolean("configured", false);
+        if (!configured) {
+            startActivity(new Intent(this, SettingsActivity.class));
+        }
+
         // Load configured target package
-        targetPackage = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .getString(TARGET_KEY, DEFAULT_TARGET_PACKAGE);
+        targetPackage = prefs.getString(TARGET_KEY, DEFAULT_TARGET_PACKAGE);
 
         // Keep screen on (important for POS terminals)
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -145,8 +152,10 @@ public class KioskActivity extends Activity {
 
         handler = new Handler();
 
-        // Launch target app immediately
-        launchTargetApp();
+        // Launch target app immediately (only if configured)
+        if (configured) {
+            launchTargetApp();
+        }
 
         // Begin the monitoring loop
         startMonitoring();
@@ -237,7 +246,7 @@ public class KioskActivity extends Activity {
         input.setPadding(padding, padding, padding, padding);
         builder.setView(input);
 
-        builder.setPositiveButton("OK", (dialog, which) -> {
+        builder.setPositiveButton("Exit", (dialog, which) -> {
             String enteredPin = input.getText().toString();
             String correctPin = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                     .getString(PIN_KEY, DEFAULT_PIN);
@@ -252,6 +261,20 @@ public class KioskActivity extends Activity {
             }
         });
 
+        builder.setNeutralButton("Settings", (dialog, which) -> {
+            String enteredPin = input.getText().toString();
+            String correctPin = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .getString(PIN_KEY, DEFAULT_PIN);
+
+            if (enteredPin.equals(correctPin)) {
+                kioskActive = false;
+                handler.removeCallbacks(monitorRunnable);
+                startActivity(new Intent(this, SettingsActivity.class));
+            } else {
+                Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
         builder.show();
     }
@@ -260,7 +283,15 @@ public class KioskActivity extends Activity {
     protected void onResume() {
         super.onResume();
         isResumed = true;
-        if (kioskActive && !firstLaunch) {
+
+        // Reload target package in case settings changed
+        targetPackage = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(TARGET_KEY, DEFAULT_TARGET_PACKAGE);
+
+        boolean configured = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getBoolean("configured", false);
+
+        if (kioskActive && configured && !firstLaunch) {
             handler.postDelayed(this::launchTargetApp, 800);
         }
         firstLaunch = false;
