@@ -95,9 +95,12 @@ public class KioskActivity extends Activity {
     /** Default exit PIN. */
     static final String DEFAULT_PIN = "1234";
 
+    /** SharedPreferences key for persisting kiosk enabled state. */
+    static final String KIOSK_ACTIVE_KEY = "kiosk_active";
+
     private Handler handler;
     private Runnable monitorRunnable;
-    private boolean kioskActive = true;
+    private boolean kioskActive;
     private boolean isResumed = false;
     private String targetPackage;
 
@@ -133,6 +136,9 @@ public class KioskActivity extends Activity {
         // Load configured target package
         targetPackage = prefs.getString(TARGET_KEY, DEFAULT_TARGET_PACKAGE);
 
+        // Load persisted kiosk state (defaults to true)
+        kioskActive = prefs.getBoolean(KIOSK_ACTIVE_KEY, true);
+
         // Keep screen on (important for POS terminals)
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -149,11 +155,16 @@ public class KioskActivity extends Activity {
         title.setGravity(Gravity.CENTER);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Launching " + targetPackage + "…");
         subtitle.setTextColor(0xFF888888);
         subtitle.setTextSize(13);
         subtitle.setGravity(Gravity.CENTER);
         subtitle.setPadding(0, 16, 0, 0);
+
+        if (kioskActive) {
+            subtitle.setText("Launching " + targetPackage + "…");
+        } else {
+            subtitle.setText("Kiosk mode disabled. Open Settings to re-enable.");
+        }
 
         layout.addView(title);
         layout.addView(subtitle);
@@ -164,8 +175,10 @@ public class KioskActivity extends Activity {
 
         handler = new Handler();
 
-        // Begin the monitoring loop
-        startMonitoring();
+        // Begin the monitoring loop only if kiosk is active
+        if (kioskActive) {
+            startMonitoring();
+        }
 
         // NOTE: Target app is launched from onWindowFocusChanged(), not here.
         // This ensures the KioskActivity window is visible first, giving
@@ -286,9 +299,12 @@ public class KioskActivity extends Activity {
 
             if (enteredPin.equals(correctPin)) {
                 kioskActive = false;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
                 handler.removeCallbacks(monitorRunnable);
+                handler.removeCallbacks(relaunchRunnable);
+                exitGestureActive = false;
                 Toast.makeText(this, "Kiosk mode disabled", Toast.LENGTH_SHORT).show();
-                finish();
             } else {
                 Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
             }
@@ -301,7 +317,11 @@ public class KioskActivity extends Activity {
 
             if (enteredPin.equals(correctPin)) {
                 kioskActive = false;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
                 handler.removeCallbacks(monitorRunnable);
+                handler.removeCallbacks(relaunchRunnable);
+                exitGestureActive = false;
                 startActivity(new Intent(this, SettingsActivity.class));
             } else {
                 Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();

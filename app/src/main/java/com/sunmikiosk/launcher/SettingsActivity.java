@@ -319,6 +319,7 @@ public class SettingsActivity extends Activity {
                 .putString(KioskActivity.TARGET_KEY, pkg)
                 .putString(KioskActivity.PIN_KEY, pin)
                 .putBoolean("configured", true)
+                .putBoolean(KioskActivity.KIOSK_ACTIVE_KEY, true)
                 .apply();
 
         Toast.makeText(this, "Saved! Activating kiosk…", Toast.LENGTH_SHORT).show();
