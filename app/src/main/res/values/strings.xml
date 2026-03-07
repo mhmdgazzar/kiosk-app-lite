@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sunmi Kiosk</string>
+    <string name="accessibility_service_description">Enables the 5-tap exit gesture in the bottom-right corner while in kiosk mode. Required for the exit gesture to work on top of the locked app.</string>
 </resources>

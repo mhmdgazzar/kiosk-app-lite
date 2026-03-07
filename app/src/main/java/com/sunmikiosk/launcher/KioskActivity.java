@@ -219,17 +219,13 @@ public class KioskActivity extends Activity {
         }
     }
 
-    /** Start the overlay service for exit gesture on top of target app. */
+    /** Start the foreground service to keep process alive. */
     private void startOverlayService() {
-        if (android.provider.Settings.canDrawOverlays(this)) {
-            Intent svc = new Intent(this, KioskOverlayService.class);
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                startForegroundService(svc);
-            } else {
-                startService(svc);
-            }
+        Intent svc = new Intent(this, KioskOverlayService.class);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(svc);
         } else {
-            Log.w("KioskExit", "Overlay permission not granted — exit gesture only on dark screen");
+            startService(svc);
         }
     }
 
