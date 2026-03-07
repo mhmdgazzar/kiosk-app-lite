@@ -74,10 +74,16 @@ public class KioskActivity extends Activity {
 
 
     /** Delay (ms) before relaunching target app when KioskActivity gains focus.
-     *  Kept short so Home press immediately returns to target app.
-     *  The first tap within this window cancels the relaunch and starts
-     *  the exit gesture (5 taps) with a full EXIT_GESTURE_PAUSE_MS window. */
-    private static final int RELAUNCH_DELAY_MS = 500;
+     *  Set to 3s so the dark screen stays long enough for the 5-tap exit gesture.
+     *  The first tap in the bottom-right corner cancels the relaunch and starts
+     *  the exit gesture with a full EXIT_GESTURE_PAUSE_MS window. */
+    private static final int RELAUNCH_DELAY_MS = 3000;
+
+    /** Size of the exit gesture corner target in dp (matches overlay). */
+    private static final int CORNER_TARGET_DP = 100;
+
+    /** SharedPreferences key for the saved stock launcher package. */
+    static final String PREVIOUS_LAUNCHER_KEY = "previous_launcher";
 
     /** Number of taps required to trigger the PIN dialog. */
     private static final int TAP_COUNT_REQUIRED = 5;
@@ -172,7 +178,7 @@ public class KioskActivity extends Activity {
         subtitle.setPadding(0, 16, 0, 0);
 
         if (kioskActive) {
-            subtitle.setText("Tap screen 5× to exit");
+            subtitle.setText("Tap bottom-right corner 5× to exit");
         } else {
             subtitle.setText("Kiosk mode disabled. Open Settings to re-enable.");
         }
@@ -213,13 +219,17 @@ public class KioskActivity extends Activity {
         }
     }
 
-    /** Start the notification service for exit gesture. */
+    /** Start the overlay service for exit gesture on top of target app. */
     private void startOverlayService() {
-        Intent svc = new Intent(this, KioskOverlayService.class);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            startForegroundService(svc);
+        if (android.provider.Settings.canDrawOverlays(this)) {
+            Intent svc = new Intent(this, KioskOverlayService.class);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(svc);
+            } else {
+                startService(svc);
+            }
         } else {
-            startService(svc);
+            Log.w("KioskExit", "Overlay permission not granted — exit gesture only on dark screen");
         }
     }
 
@@ -260,11 +270,19 @@ public class KioskActivity extends Activity {
 
     /**
      * Handle touch events for the exit gesture.
-     * Requires {@link #TAP_COUNT_REQUIRED} taps ANYWHERE on screen
+     * Requires {@link #TAP_COUNT_REQUIRED} taps in the BOTTOM-RIGHT CORNER
      * within {@link #TAP_TIMEOUT_MS} milliseconds to trigger the PIN dialog.
      */
     private void handleTouch(MotionEvent event) {
         if (event.getAction() != MotionEvent.ACTION_DOWN) return;
+
+        // Only count taps in the bottom-right corner
+        float cornerPx = CORNER_TARGET_DP * getResources().getDisplayMetrics().density;
+        float screenW = getResources().getDisplayMetrics().widthPixels;
+        float screenH = getResources().getDisplayMetrics().heightPixels;
+        if (event.getRawX() < screenW - cornerPx || event.getRawY() < screenH - cornerPx) {
+            return; // Outside the corner — ignore
+        }
 
         long now = System.currentTimeMillis();
         if (now - lastTapTime > TAP_TIMEOUT_MS) {
@@ -272,7 +290,7 @@ public class KioskActivity extends Activity {
         }
         tapCount++;
         lastTapTime = now;
-        Log.d("KioskExit", "Tap #" + tapCount + "/" + TAP_COUNT_REQUIRED);
+        Log.d("KioskExit", "Corner tap #" + tapCount + "/" + TAP_COUNT_REQUIRED);
 
         // On first tap, pause auto-relaunch so user has time to complete the gesture
         if (tapCount == 1) {
@@ -295,7 +313,6 @@ public class KioskActivity extends Activity {
             }
             showPinDialog();
         }
-        return;
     }
 
     /**
@@ -377,8 +394,8 @@ public class KioskActivity extends Activity {
     private void disableKiosk() {
         // 1. Persist disabled state
         kioskActive = false;
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        prefs.edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
 
         // 2. Stop all monitoring, relaunch callbacks, and overlay service
         handler.removeCallbacks(relaunchRunnable);
@@ -388,21 +405,47 @@ public class KioskActivity extends Activity {
         exitGestureActive = false;
         stopOverlayService();
 
-        // 3. Clear this app as the preferred Home launcher so the stock one takes over
+        // 3. Clear this app as the preferred Home launcher
         getPackageManager().clearPackagePreferredActivities(getPackageName());
 
-        // 4. Show the Kiosk settings screen and close the dark kiosk screen
+        // 4. Auto-force the saved stock launcher back
+        String previousLauncher = prefs.getString(PREVIOUS_LAUNCHER_KEY, "");
+        boolean restored = false;
+        if (!previousLauncher.isEmpty()) {
+            restored = forceHomeLauncher(previousLauncher);
+        }
+
+        // 5. Show the Kiosk settings screen
         startActivity(new Intent(this, SettingsActivity.class));
 
-        // 5. Auto-trigger launcher chooser so user can pick their default launcher
-        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-        homeIntent.addCategory(Intent.CATEGORY_HOME);
-        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(homeIntent);
+        // 6. If auto-force failed, trigger launcher chooser as fallback
+        if (!restored) {
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+            homeIntent.addCategory(Intent.CATEGORY_HOME);
+            homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(homeIntent);
+        }
 
         finish();
-
         Toast.makeText(this, "Kiosk mode disabled", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Try to force a launcher as the default Home app via shell command.
+     * Works on rooted/Sunmi devices. Falls back gracefully on standard Android.
+     * @return true if the shell command succeeded
+     */
+    static boolean forceHomeLauncher(String componentFlat) {
+        try {
+            Process p = Runtime.getRuntime().exec(
+                    new String[]{"cmd", "package", "set-home-activity", componentFlat});
+            int exit = p.waitFor();
+            Log.d("KioskExit", "set-home-activity " + componentFlat + " exit=" + exit);
+            return exit == 0;
+        } catch (Exception e) {
+            Log.w("KioskExit", "forceHomeLauncher failed: " + e.getMessage());
+            return false;
+        }
     }
     @Override
     protected void onResume() {

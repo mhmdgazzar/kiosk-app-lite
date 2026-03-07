@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import android.content.pm.ResolveInfo;
+
 /**
  * SettingsActivity — Clean, monochromatic settings UI for Kiosk App Lite.
  *
@@ -152,7 +154,7 @@ public class SettingsActivity extends Activity {
                 "Set as default launcher → locks to target app",
                 "Home/Back buttons return to the target app",
                 "Status bar stays accessible for WiFi/Bluetooth",
-                "Tap 5× anywhere on screen → enter PIN to exit",
+                "Tap 5× bottom-right corner → enter PIN to exit",
                 "ADB always stays accessible — no lockout risk"
         };
 
@@ -314,30 +316,63 @@ public class SettingsActivity extends Activity {
             return;
         }
 
+        // Detect and save the current default launcher before we take over
+        String currentLauncher = detectCurrentLauncher();
+
         SharedPreferences prefs = getSharedPreferences(KioskActivity.PREFS_NAME, MODE_PRIVATE);
-        prefs.edit()
-                .putString(KioskActivity.TARGET_KEY, pkg)
-                .putString(KioskActivity.PIN_KEY, pin)
-                .putBoolean("configured", true)
-                .putBoolean(KioskActivity.KIOSK_ACTIVE_KEY, true)
-                .apply();
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(KioskActivity.TARGET_KEY, pkg);
+        editor.putString(KioskActivity.PIN_KEY, pin);
+        editor.putBoolean("configured", true);
+        editor.putBoolean(KioskActivity.KIOSK_ACTIVE_KEY, true);
+        if (currentLauncher != null && !currentLauncher.isEmpty()) {
+            editor.putString(KioskActivity.PREVIOUS_LAUNCHER_KEY, currentLauncher);
+        }
+        editor.apply();
 
         Toast.makeText(this, "Saved! Activating kiosk…", Toast.LENGTH_SHORT).show();
 
         // Clear any cached launcher preferences
         getPackageManager().clearPackagePreferredActivities(getPackageName());
 
-        // Show an alert telling the user they MUST select Kiosk App Lite as Home
-        new AlertDialog.Builder(this)
-                .setTitle("Set Default Launcher")
-                .setMessage("To activate kiosk mode, you must select \"Kiosk App Lite\" as your Home app on the next screen.")
-                .setPositiveButton("Open Settings", (d, w) -> {
-                    // Open the system Home settings page
-                    Intent homeSettings = new Intent(android.provider.Settings.ACTION_HOME_SETTINGS);
-                    startActivity(homeSettings);
-                })
-                .setCancelable(false)
-                .show();
+        // Try to auto-force Kiosk App Lite as launcher
+        String kioskComponent = getPackageName() + "/" + getPackageName() + ".KioskActivity";
+        boolean forced = KioskActivity.forceHomeLauncher(kioskComponent);
+
+        if (forced) {
+            // Auto-forced — just go straight to KioskActivity
+            Toast.makeText(this, "Kiosk launcher activated", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, KioskActivity.class));
+            finish();
+        } else {
+            // Fallback: tell user to select manually
+            new AlertDialog.Builder(this)
+                    .setTitle("Set Default Launcher")
+                    .setMessage("To activate kiosk mode, you must select \"Kiosk App Lite\" as your Home app on the next screen.")
+                    .setPositiveButton("Open Settings", (d, w) -> {
+                        Intent homeSettings = new Intent(android.provider.Settings.ACTION_HOME_SETTINGS);
+                        startActivity(homeSettings);
+                    })
+                    .setCancelable(false)
+                    .show();
+        }
+    }
+
+    /**
+     * Detect the current default Home launcher component.
+     * Returns the component flat string (e.g. "com.google.android.apps.nexuslauncher/.NexusLauncherActivity").
+     */
+    private String detectCurrentLauncher() {
+        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+        homeIntent.addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo ri = getPackageManager().resolveActivity(homeIntent, 0);
+        if (ri != null && ri.activityInfo != null) {
+            String pkg = ri.activityInfo.packageName;
+            // Skip if it's already us
+            if (pkg.equals(getPackageName())) return "";
+            return pkg + "/" + ri.activityInfo.name;
+        }
+        return "";
     }
 
     // ── UI Helpers ──────────────────────────────────────────
