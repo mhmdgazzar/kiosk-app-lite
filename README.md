@@ -1,5 +1,9 @@
 # Kiosk App Lite
 
+[![Download APK](https://img.shields.io/github/v/release/mhmdgazzar/kiosk-app-lite?label=Download%20APK&style=for-the-badge)](https://github.com/mhmdgazzar/kiosk-app-lite/releases/latest/download/kiosk-app-lite-v1.0.0.apk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-white.svg?style=for-the-badge)](LICENSE)
+[![Android 6.0+](https://img.shields.io/badge/Android-6.0%2B-white.svg?style=for-the-badge)](https://developer.android.com)
+
 A minimal, open-source **Android** kiosk launcher that locks a device to a single app. Built for POS terminals, kiosks, digital signage, and any scenario where you need to restrict an Android device to one application.
 
 **No root. No Device Owner. No trial. No watermark. Just works.**
@@ -50,10 +54,14 @@ The kiosk operates in a simple 3-state flow:
 
 ## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/rocket-launch.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/rocket-launch.svg"><img src="docs/icons/dark/rocket-launch.svg" width="20" /></picture> Quick Start
 
-### 1. Install via ADB
+### 1. Download
+
+[**Download the latest APK →**](https://github.com/mhmdgazzar/kiosk-app-lite/releases/latest/download/kiosk-app-lite-v1.0.0.apk)
+
+Or install via ADB:
 
 ```bash
-adb install -r app-debug.apk
+adb install -r kiosk-app-lite-v1.0.0.apk
 ```
 
 ### 2. Set as Default Launcher
@@ -64,9 +72,11 @@ Press the **Home** button on the device. Android will ask you to choose a launch
 
 The target app will launch immediately.
 
+On **first launch**, a clean settings screen will appear where you can configure the target app and exit PIN.
+
 ### 3. Configure the Target App
 
-By default, the kiosk launches `com.jtl.pos`. To change it:
+Use the built-in **Settings UI** (shown on first launch), or configure remotely via ADB:
 
 ```bash
 adb shell am broadcast -a com.sunmikiosk.launcher.SET_TARGET \
@@ -121,6 +131,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 app/src/main/java/com/sunmikiosk/launcher/
 ├── KioskActivity.java      # Main launcher — launches & monitors the target app
+├── SettingsActivity.java    # Clean settings UI (target app, PIN)
 ├── BootReceiver.java        # Starts kiosk on device boot
 └── ConfigReceiver.java      # ADB-configurable target app & PIN
 ```
