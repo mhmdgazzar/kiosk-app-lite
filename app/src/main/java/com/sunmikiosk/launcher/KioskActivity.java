@@ -27,6 +27,7 @@ import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -36,6 +37,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -76,6 +78,10 @@ public class KioskActivity extends Activity {
 
     /** How often (ms) to check if the kiosk home screen is visible and needs to relaunch. */
     private static final int MONITOR_INTERVAL_MS = 3000;
+
+    /** Delay (ms) before relaunching target app when KioskActivity gains focus.
+     *  This gives the user a window to start the exit gesture. */
+    private static final int RELAUNCH_DELAY_MS = 3500;
 
     /** Number of taps required in the exit corner to trigger the PIN dialog. */
     private static final int TAP_COUNT_REQUIRED = 5;
@@ -145,10 +151,16 @@ public class KioskActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // Build a minimal UI — this screen is only briefly visible during transitions
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setGravity(Gravity.CENTER);
-        layout.setBackgroundColor(0xFF111111);
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(0xFF111111);
+
+        LinearLayout center = new LinearLayout(this);
+        center.setOrientation(LinearLayout.VERTICAL);
+        center.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams centerLp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+        center.setLayoutParams(centerLp);
 
         TextView title = new TextView(this);
         title.setText("Kiosk App Lite");
@@ -168,12 +180,29 @@ public class KioskActivity extends Activity {
             subtitle.setText("Kiosk mode disabled. Open Settings to re-enable.");
         }
 
-        layout.addView(title);
-        layout.addView(subtitle);
-        setContentView(layout);
+        center.addView(title);
+        center.addView(subtitle);
+        root.addView(center);
+
+        // Subtle exit hint in bottom-right corner
+        if (kioskActive) {
+            TextView exitHint = new TextView(this);
+            exitHint.setText("● ● ●");
+            exitHint.setTextColor(0x33FFFFFF); // Very subtle
+            exitHint.setTextSize(10);
+            exitHint.setPadding(0, 0, 24, 24);
+            FrameLayout.LayoutParams hintLp = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.BOTTOM | Gravity.END);
+            exitHint.setLayoutParams(hintLp);
+            root.addView(exitHint);
+        }
+
+        setContentView(root);
 
         // Touch listener for the exit gesture (multi-tap in corner)
-        layout.setOnTouchListener(this::handleTouch);
+        root.setOnTouchListener(this::handleTouch);
 
         handler = new Handler();
 
@@ -240,6 +269,10 @@ public class KioskActivity extends Activity {
         float screenWidth = v.getWidth();
         float screenHeight = v.getHeight();
 
+        Log.d("KioskExit", "Touch at (" + event.getX() + "," + event.getY()
+                + ") screen=" + screenWidth + "x" + screenHeight
+                + " cornerThreshold=(" + (screenWidth - cornerSize) + "," + (screenHeight - cornerSize) + ")");
+
         // Bottom-right corner detection
         if (event.getX() > screenWidth - cornerSize && event.getY() > screenHeight - cornerSize) {
             long now = System.currentTimeMillis();
@@ -248,6 +281,7 @@ public class KioskActivity extends Activity {
             }
             tapCount++;
             lastTapTime = now;
+            Log.d("KioskExit", "Corner tap #" + tapCount + "/" + TAP_COUNT_REQUIRED);
 
             // On first tap, pause auto-relaunch so user has time to complete the gesture
             if (tapCount == 1) {
@@ -401,7 +435,7 @@ public class KioskActivity extends Activity {
                     .getBoolean("configured", false);
             if (configured) {
                 handler.removeCallbacks(relaunchRunnable);
-                handler.postDelayed(relaunchRunnable, 2000);
+                handler.postDelayed(relaunchRunnable, RELAUNCH_DELAY_MS);
             }
         }
     }
