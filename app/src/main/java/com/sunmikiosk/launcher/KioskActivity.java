@@ -76,8 +76,7 @@ public class KioskActivity extends Activity {
     /** Default target app to launch. Override via SharedPreferences or ADB. */
     private static final String DEFAULT_TARGET_PACKAGE = "com.jtl.pos";
 
-    /** How often (ms) to check if the kiosk home screen is visible and needs to relaunch. */
-    private static final int MONITOR_INTERVAL_MS = 3000;
+
 
     /** Delay (ms) before relaunching target app when KioskActivity gains focus.
      *  This gives the user a window to start the exit gesture. */
@@ -105,7 +104,6 @@ public class KioskActivity extends Activity {
     static final String KIOSK_ACTIVE_KEY = "kiosk_active";
 
     private Handler handler;
-    private Runnable monitorRunnable;
     private boolean kioskActive;
     private boolean isResumed = false;
     private String targetPackage;
@@ -208,12 +206,7 @@ public class KioskActivity extends Activity {
 
         handler = new Handler();
 
-        // Begin the monitoring loop only if kiosk is active
-        if (kioskActive) {
-            startMonitoring();
-        }
-
-        // NOTE: Target app is launched from onWindowFocusChanged(), not here.
+        // NOTE: Target app is launched from onResume() / onWindowFocusChanged(),
         // This ensures the KioskActivity window is visible first, giving
         // the user a chance to perform the exit gesture (5-tap in corner).
     }
@@ -223,6 +216,7 @@ public class KioskActivity extends Activity {
      * Uses the package manager to resolve the launch intent.
      */
     private void launchTargetApp() {
+        Log.d("KioskExit", "launchTargetApp: exitGestureActive=" + exitGestureActive);
         Intent launchIntent = getPackageManager().getLaunchIntentForPackage(targetPackage);
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -232,30 +226,6 @@ public class KioskActivity extends Activity {
                     "Target app not found: " + targetPackage,
                     Toast.LENGTH_LONG).show();
         }
-    }
-
-    /**
-     * Start a periodic check that relaunches the target app whenever the
-     * kiosk home screen becomes visible (meaning the target app was closed).
-     *
-     * <p>The monitor intentionally only checks {@code isResumed} — it does NOT
-     * aggressively poll the foreground app. This prevents the kiosk from
-     * interfering with the target app's own dialogs, sub-activities, or
-     * permission prompts.</p>
-     */
-    private void startMonitoring() {
-        monitorRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (kioskActive && isResumed && !exitGestureActive) {
-                    launchTargetApp();
-                }
-                if (kioskActive) {
-                    handler.postDelayed(this, MONITOR_INTERVAL_MS);
-                }
-            }
-        };
-        handler.postDelayed(monitorRunnable, MONITOR_INTERVAL_MS);
     }
 
     /**
@@ -401,7 +371,6 @@ public class KioskActivity extends Activity {
                 .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
 
         // 2. Stop all monitoring and relaunch callbacks
-        handler.removeCallbacks(monitorRunnable);
         handler.removeCallbacks(relaunchRunnable);
         if (exitGestureTimeoutRunnable != null) {
             handler.removeCallbacks(exitGestureTimeoutRunnable);
@@ -433,10 +402,17 @@ public class KioskActivity extends Activity {
                 + " exitGestureActive=" + exitGestureActive
                 + " targetPackage=" + targetPackage);
 
+        // Force our task to the front — prevents Digital Wellbeing etc. stealing focus
+        if (kioskActive) {
+            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                am.moveTaskToFront(getTaskId(), ActivityManager.MOVE_TASK_WITH_HOME);
+            }
+        }
+
         // If kiosk is disabled, redirect to Settings and stop all callbacks
         if (!kioskActive) {
             handler.removeCallbacks(relaunchRunnable);
-            handler.removeCallbacks(monitorRunnable);
             if (exitGestureTimeoutRunnable != null) {
                 handler.removeCallbacks(exitGestureTimeoutRunnable);
             }
@@ -473,6 +449,17 @@ public class KioskActivity extends Activity {
                 handler.postDelayed(relaunchRunnable, RELAUNCH_DELAY_MS);
                 Log.d("KioskExit", "onWindowFocusChanged: scheduled relaunch in " + RELAUNCH_DELAY_MS + "ms");
             }
+        } else if (!hasFocus && kioskActive && !exitGestureActive) {
+            // Another window stole focus (e.g. Digital Wellbeing) — fight back
+            Log.d("KioskExit", "onWindowFocusChanged: focus stolen! Reclaiming...");
+            handler.postDelayed(() -> {
+                if (kioskActive && isResumed && !exitGestureActive) {
+                    ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                    if (am != null) {
+                        am.moveTaskToFront(getTaskId(), ActivityManager.MOVE_TASK_WITH_HOME);
+                    }
+                }
+            }, 300);
         }
     }
 
@@ -492,8 +479,8 @@ public class KioskActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (handler != null && monitorRunnable != null) {
-            handler.removeCallbacks(monitorRunnable);
+        if (handler != null) {
+            handler.removeCallbacks(relaunchRunnable);
         }
     }
 }
