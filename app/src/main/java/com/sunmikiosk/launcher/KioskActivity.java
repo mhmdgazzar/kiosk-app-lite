@@ -369,9 +369,23 @@ public class KioskActivity extends Activity {
         super.onResume();
         isResumed = true;
 
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+
         // Reload target package in case settings changed
-        targetPackage = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .getString(TARGET_KEY, DEFAULT_TARGET_PACKAGE);
+        targetPackage = prefs.getString(TARGET_KEY, DEFAULT_TARGET_PACKAGE);
+
+        // Reload kiosk state — it may have changed via SettingsActivity or PIN exit
+        kioskActive = prefs.getBoolean(KIOSK_ACTIVE_KEY, true);
+
+        // If kiosk is disabled, redirect to Settings and stop all callbacks
+        if (!kioskActive) {
+            handler.removeCallbacks(relaunchRunnable);
+            handler.removeCallbacks(monitorRunnable);
+            if (exitGestureTimeoutRunnable != null) {
+                handler.removeCallbacks(exitGestureTimeoutRunnable);
+            }
+            startActivity(new Intent(this, SettingsActivity.class));
+        }
     }
 
     /**
