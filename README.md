@@ -51,6 +51,18 @@ A minimal, open-source **Android** kiosk launcher that locks a device to a singl
   <em>Settings screen &nbsp;·&nbsp; App picker dialog</em>
 </p>
 
+### How Kiosk Mode Works
+
+<p align="center">
+  <img src="docs/wireframe.png" alt="Kiosk App Lite — Flow Diagram" width="700" />
+</p>
+
+| State | Description |
+|---|---|
+| **Boot / Home Press** | Brief transition screen. Immediately launches the target app. |
+| **Target App Running** | The locked app runs fullscreen. Status bar stays accessible. Bottom-right corner is the hidden exit zone. |
+| **PIN Exit Dialog** | After 5 quick taps in the corner, a PIN dialog appears. Correct PIN exits kiosk mode. |
+
 ## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/rocket-launch.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/rocket-launch.svg"><img src="docs/icons/dark/rocket-launch.svg" width="20" /></picture> Quick Start
 
 ### 1. Download
