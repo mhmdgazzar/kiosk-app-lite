@@ -109,6 +109,8 @@ public class KioskActivity extends Activity {
     private long lastTapTime = 0;
     /** When true, auto-relaunch is paused to let the user complete the exit gesture. */
     private boolean exitGestureActive = false;
+    /** When true, PIN dialog is visible — taps should NOT count as exit gesture. */
+    private boolean pinDialogShowing = false;
     /** How long to pause relaunch when exit gesture starts (ms). */
     private static final int EXIT_GESTURE_PAUSE_MS = 5000;
     /** Runnable that resets the exit gesture after timeout. */
@@ -116,7 +118,7 @@ public class KioskActivity extends Activity {
 
     /** Reusable runnable for delayed relaunch — stored so it can be cancelled. */
     private final Runnable relaunchRunnable = () -> {
-        if (kioskActive && isResumed && !exitGestureActive) {
+        if (kioskActive && isResumed && !exitGestureActive && !pinDialogShowing) {
             launchTargetApp();
         }
     };
@@ -216,7 +218,7 @@ public class KioskActivity extends Activity {
      */
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-        if (kioskActive) {
+        if (kioskActive && !pinDialogShowing) {
             handleTouch(event);
         }
         return super.dispatchTouchEvent(event);
@@ -267,6 +269,7 @@ public class KioskActivity extends Activity {
      * The correct PIN is stored in SharedPreferences (default: {@value DEFAULT_PIN}).
      */
     private void showPinDialog() {
+        pinDialogShowing = true;
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Exit Kiosk Mode");
         builder.setMessage("Enter PIN to exit:");
@@ -283,6 +286,7 @@ public class KioskActivity extends Activity {
                     .getString(PIN_KEY, DEFAULT_PIN);
 
             if (enteredPin.equals(correctPin)) {
+                pinDialogShowing = false;
                 disableKiosk();
             } else {
                 Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
@@ -295,6 +299,7 @@ public class KioskActivity extends Activity {
                     .getString(PIN_KEY, DEFAULT_PIN);
 
             if (enteredPin.equals(correctPin)) {
+                pinDialogShowing = false;
                 // Go to settings to reconfigure (different from Exit)
                 kioskActive = false;
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
@@ -313,7 +318,7 @@ public class KioskActivity extends Activity {
 
         builder.setNegativeButton("Cancel", (dialog, which) -> {
             dialog.cancel();
-            // Resume kiosk mode — relaunch target app
+            pinDialogShowing = false;
             exitGestureActive = false;
             if (kioskActive) {
                 launchTargetApp();
@@ -322,7 +327,7 @@ public class KioskActivity extends Activity {
 
         AlertDialog dialog = builder.create();
         dialog.setOnCancelListener(d -> {
-            // Back button or tap outside dialog
+            pinDialogShowing = false;
             exitGestureActive = false;
             if (kioskActive) {
                 launchTargetApp();
@@ -353,6 +358,13 @@ public class KioskActivity extends Activity {
 
         // 4. Show the Kiosk settings screen and close the dark kiosk screen
         startActivity(new Intent(this, SettingsActivity.class));
+
+        // 5. Auto-trigger launcher chooser so user can pick their default launcher
+        Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+        homeIntent.addCategory(Intent.CATEGORY_HOME);
+        homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(homeIntent);
+
         finish();
 
         Toast.makeText(this, "Kiosk mode disabled", Toast.LENGTH_SHORT).show();
@@ -383,7 +395,7 @@ public class KioskActivity extends Activity {
             startActivity(new Intent(this, SettingsActivity.class));
             finish();
             return;
-        } else if (!exitGestureActive) {
+        } else if (!exitGestureActive && !pinDialogShowing) {
             // Schedule relaunch from onResume as well — onWindowFocusChanged(true)
             // may never fire if another app steals focus (e.g. Digital Wellbeing)
             boolean configured = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
@@ -407,7 +419,7 @@ public class KioskActivity extends Activity {
         Log.d("KioskExit", "onWindowFocusChanged: hasFocus=" + hasFocus
                 + " kioskActive=" + kioskActive
                 + " exitGestureActive=" + exitGestureActive);
-        if (hasFocus && kioskActive && !exitGestureActive) {
+        if (hasFocus && kioskActive && !exitGestureActive && !pinDialogShowing) {
             boolean configured = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                     .getBoolean("configured", false);
             if (configured) {
