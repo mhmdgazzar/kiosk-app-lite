@@ -152,7 +152,7 @@ public class SettingsActivity extends Activity {
                 "Set as default launcher → locks to target app",
                 "Home/Back buttons return to the target app",
                 "Status bar stays accessible for WiFi/Bluetooth",
-                "Tap 5× in bottom-right corner → enter PIN to exit",
+                "Tap 5× anywhere on screen → enter PIN to exit",
                 "ADB always stays accessible — no lockout risk"
         };
 

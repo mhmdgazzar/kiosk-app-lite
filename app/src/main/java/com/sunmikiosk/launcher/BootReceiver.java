@@ -19,9 +19,15 @@ public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            Intent launchIntent = new Intent(context, KioskActivity.class);
-            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(launchIntent);
+            // Only auto-launch if kiosk mode is active
+            boolean kioskActive = context.getSharedPreferences(
+                    KioskActivity.PREFS_NAME, Context.MODE_PRIVATE)
+                    .getBoolean(KioskActivity.KIOSK_ACTIVE_KEY, true);
+            if (kioskActive) {
+                Intent launchIntent = new Intent(context, KioskActivity.class);
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(launchIntent);
+            }
         }
     }
 }

@@ -23,9 +23,7 @@
 package com.sunmikiosk.launcher;
 
 import android.app.Activity;
-import android.app.ActivityManager;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 import android.content.SharedPreferences;
@@ -34,15 +32,12 @@ import android.os.Handler;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.MotionEvent;
-import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import java.util.List;
 
 /**
  * KioskActivity — A minimal Android launcher that locks the device to a single app.
@@ -142,8 +137,8 @@ public class KioskActivity extends Activity {
         // If not configured or kiosk is disabled, go straight to SettingsActivity
         if (!configured || !kioskActive) {
             startActivity(new Intent(this, SettingsActivity.class));
-            // Don't finish() — this activity stays as the Home fallback
-            // but doesn't block the user from interacting with Settings
+            finish();
+            return;
         }
 
         // Keep screen on (important for POS terminals)
@@ -300,7 +295,17 @@ public class KioskActivity extends Activity {
                     .getString(PIN_KEY, DEFAULT_PIN);
 
             if (enteredPin.equals(correctPin)) {
-                disableKiosk();
+                // Go to settings to reconfigure (different from Exit)
+                kioskActive = false;
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
+                handler.removeCallbacks(relaunchRunnable);
+                if (exitGestureTimeoutRunnable != null) {
+                    handler.removeCallbacks(exitGestureTimeoutRunnable);
+                }
+                exitGestureActive = false;
+                startActivity(new Intent(this, SettingsActivity.class));
+                finish();
             } else {
                 Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
             }
@@ -346,8 +351,9 @@ public class KioskActivity extends Activity {
         // 3. Clear this app as the preferred Home launcher so the stock one takes over
         getPackageManager().clearPackagePreferredActivities(getPackageName());
 
-        // 4. Show the Kiosk settings screen
+        // 4. Show the Kiosk settings screen and close the dark kiosk screen
         startActivity(new Intent(this, SettingsActivity.class));
+        finish();
 
         Toast.makeText(this, "Kiosk mode disabled", Toast.LENGTH_SHORT).show();
     }
@@ -375,6 +381,8 @@ public class KioskActivity extends Activity {
                 handler.removeCallbacks(exitGestureTimeoutRunnable);
             }
             startActivity(new Intent(this, SettingsActivity.class));
+            finish();
+            return;
         } else if (!exitGestureActive) {
             // Schedule relaunch from onResume as well — onWindowFocusChanged(true)
             // may never fire if another app steals focus (e.g. Digital Wellbeing)
