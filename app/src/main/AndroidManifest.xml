@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
@@ -30,6 +32,11 @@
             android:name=".SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
+
+        <!-- Overlay service for exit gesture on top of target app -->
+        <service
+            android:name=".KioskOverlayService"
+            android:exported="false" />
 
         <!-- Auto-start on device boot -->
         <receiver

@@ -190,9 +190,42 @@ public class KioskActivity extends Activity {
 
         handler = new Handler();
 
-        // NOTE: Target app is launched from onResume() / onWindowFocusChanged(),
-        // This ensures the KioskActivity window is visible first, giving
-        // the user a chance to perform the exit gesture (5-tap in corner).
+        // Start the overlay service so the exit gesture works ON TOP of the target app
+        startOverlayService();
+
+        // If launched with show_pin (from overlay), show PIN dialog immediately
+        if (getIntent().getBooleanExtra("show_pin", false)) {
+            getIntent().removeExtra("show_pin");
+            showPinDialog();
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        // Handle show_pin from overlay when activity already exists (singleTask)
+        if (intent.getBooleanExtra("show_pin", false)) {
+            intent.removeExtra("show_pin");
+            handler.removeCallbacks(relaunchRunnable);
+            exitGestureActive = true;
+            showPinDialog();
+        }
+    }
+
+    /** Start the notification service for exit gesture. */
+    private void startOverlayService() {
+        Intent svc = new Intent(this, KioskOverlayService.class);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(svc);
+        } else {
+            startService(svc);
+        }
+    }
+
+    /** Stop the overlay service. */
+    private void stopOverlayService() {
+        stopService(new Intent(this, KioskOverlayService.class));
     }
 
     /**
@@ -347,12 +380,13 @@ public class KioskActivity extends Activity {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                 .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
 
-        // 2. Stop all monitoring and relaunch callbacks
+        // 2. Stop all monitoring, relaunch callbacks, and overlay service
         handler.removeCallbacks(relaunchRunnable);
         if (exitGestureTimeoutRunnable != null) {
             handler.removeCallbacks(exitGestureTimeoutRunnable);
         }
         exitGestureActive = false;
+        stopOverlayService();
 
         // 3. Clear this app as the preferred Home launcher so the stock one takes over
         getPackageManager().clearPackagePreferredActivities(getPackageName());
