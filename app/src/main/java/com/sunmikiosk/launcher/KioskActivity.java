@@ -298,13 +298,7 @@ public class KioskActivity extends Activity {
                     .getString(PIN_KEY, DEFAULT_PIN);
 
             if (enteredPin.equals(correctPin)) {
-                kioskActive = false;
-                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                        .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
-                handler.removeCallbacks(monitorRunnable);
-                handler.removeCallbacks(relaunchRunnable);
-                exitGestureActive = false;
-                Toast.makeText(this, "Kiosk mode disabled", Toast.LENGTH_SHORT).show();
+                disableKiosk();
             } else {
                 Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
             }
@@ -316,13 +310,7 @@ public class KioskActivity extends Activity {
                     .getString(PIN_KEY, DEFAULT_PIN);
 
             if (enteredPin.equals(correctPin)) {
-                kioskActive = false;
-                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                        .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
-                handler.removeCallbacks(monitorRunnable);
-                handler.removeCallbacks(relaunchRunnable);
-                exitGestureActive = false;
-                startActivity(new Intent(this, SettingsActivity.class));
+                disableKiosk();
             } else {
                 Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show();
             }
@@ -348,6 +336,32 @@ public class KioskActivity extends Activity {
         dialog.show();
     }
 
+    /**
+     * Disable kiosk mode, restore the device's default launcher, and open Settings.
+     * Called when user enters correct PIN via either "Exit" or "Settings" button.
+     */
+    private void disableKiosk() {
+        // 1. Persist disabled state
+        kioskActive = false;
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .edit().putBoolean(KIOSK_ACTIVE_KEY, false).apply();
+
+        // 2. Stop all monitoring and relaunch callbacks
+        handler.removeCallbacks(monitorRunnable);
+        handler.removeCallbacks(relaunchRunnable);
+        if (exitGestureTimeoutRunnable != null) {
+            handler.removeCallbacks(exitGestureTimeoutRunnable);
+        }
+        exitGestureActive = false;
+
+        // 3. Clear this app as the preferred Home launcher so the stock one takes over
+        getPackageManager().clearPackagePreferredActivities(getPackageName());
+
+        // 4. Show the Kiosk settings screen
+        startActivity(new Intent(this, SettingsActivity.class));
+
+        Toast.makeText(this, "Kiosk mode disabled", Toast.LENGTH_SHORT).show();
+    }
     @Override
     protected void onResume() {
         super.onResume();
