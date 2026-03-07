@@ -6,8 +6,13 @@
 package com.sunmikiosk.launcher;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -18,6 +23,10 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * SettingsActivity — Clean, monochromatic settings UI for Kiosk App Lite.
@@ -38,6 +47,7 @@ public class SettingsActivity extends Activity {
     private static final int TEXT_SECONDARY = 0xFF888888;
     private static final int ACCENT_COLOR = 0xFFCCCCCC;
     private static final int INPUT_BG = 0xFF111111;
+    private static final int BTN_SECONDARY_BG = 0xFF222222;
 
     private EditText packageInput;
     private EditText pinInput;
@@ -60,23 +70,19 @@ public class SettingsActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(24), dp(48), dp(24), dp(48));
 
-        // Header
+        // Header — app name only, no icon
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
         header.setGravity(Gravity.CENTER);
         header.setPadding(0, dp(16), 0, dp(32));
 
-        ImageView headerIcon = new ImageView(this);
-        headerIcon.setImageResource(R.drawable.ic_wrench);
-        headerIcon.setLayoutParams(new LinearLayout.LayoutParams(dp(40), dp(40)));
-        header.addView(headerIcon);
-
-        TextView title = createText("Settings", 22, TEXT_PRIMARY, true);
-        title.setPadding(0, dp(12), 0, 0);
+        TextView title = createText("Kiosk App Lite", 24, TEXT_PRIMARY, true);
+        title.setGravity(Gravity.CENTER);
         header.addView(title);
 
         TextView subtitle = createText("Configure your kiosk launcher", 13, TEXT_SECONDARY, false);
-        subtitle.setPadding(0, dp(4), 0, 0);
+        subtitle.setGravity(Gravity.CENTER);
+        subtitle.setPadding(0, dp(6), 0, 0);
         header.addView(subtitle);
 
         root.addView(header);
@@ -87,13 +93,32 @@ public class SettingsActivity extends Activity {
         LinearLayout appHeader = createCardHeader(R.drawable.ic_terminal, "Target Application");
         appCard.addView(appHeader);
 
-        TextView appDesc = createText("Package name of the app to lock into kiosk mode", 12, TEXT_SECONDARY, false);
+        TextView appDesc = createText("Enter package name or browse installed apps", 12, TEXT_SECONDARY, false);
         appDesc.setPadding(0, dp(4), 0, dp(12));
         appCard.addView(appDesc);
 
         packageInput = createInput(currentPackage, "com.example.app");
         appCard.addView(packageInput);
 
+        // Browse Apps button
+        appCard.addView(createSpacer(10));
+
+        TextView browseBtn = new TextView(this);
+        browseBtn.setText("Browse Installed Apps…");
+        browseBtn.setTextSize(13);
+        browseBtn.setTextColor(ACCENT_COLOR);
+        browseBtn.setTypeface(null, Typeface.BOLD);
+        browseBtn.setGravity(Gravity.CENTER);
+        browseBtn.setPadding(dp(16), dp(11), dp(16), dp(11));
+
+        GradientDrawable browseBg = new GradientDrawable();
+        browseBg.setColor(BTN_SECONDARY_BG);
+        browseBg.setCornerRadius(dp(8));
+        browseBg.setStroke(1, BORDER_COLOR);
+        browseBtn.setBackground(browseBg);
+        browseBtn.setOnClickListener(v -> showAppPicker());
+
+        appCard.addView(browseBtn);
         root.addView(appCard);
 
         // Spacer
@@ -161,6 +186,115 @@ public class SettingsActivity extends Activity {
 
         scrollView.addView(root);
         setContentView(scrollView);
+    }
+
+    /**
+     * Show a dialog listing all user-installed (launchable) apps.
+     * Each item shows the app icon, name, and package name.
+     */
+    private void showAppPicker() {
+        PackageManager pm = getPackageManager();
+        Intent launchIntent = new Intent(Intent.ACTION_MAIN, null);
+        launchIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+
+        List<ApplicationInfo> apps = new ArrayList<>();
+        List<String> appNames = new ArrayList<>();
+        List<String> appPackages = new ArrayList<>();
+
+        // Collect all launchable apps
+        for (android.content.pm.ResolveInfo ri : pm.queryIntentActivities(launchIntent, 0)) {
+            String pkg = ri.activityInfo.packageName;
+            // Skip ourselves
+            if (pkg.equals(getPackageName())) continue;
+
+            try {
+                ApplicationInfo appInfo = pm.getApplicationInfo(pkg, 0);
+                String label = pm.getApplicationLabel(appInfo).toString();
+                if (!appPackages.contains(pkg)) {
+                    apps.add(appInfo);
+                    appNames.add(label);
+                    appPackages.add(pkg);
+                }
+            } catch (PackageManager.NameNotFoundException ignored) {}
+        }
+
+        // Sort alphabetically by name
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < appNames.size(); i++) indices.add(i);
+        Collections.sort(indices, (a, b) ->
+                appNames.get(a).compareToIgnoreCase(appNames.get(b)));
+
+        // Build the dialog with a custom list
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Select App");
+
+        ScrollView scrollView = new ScrollView(this);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(4), dp(8), dp(4), dp(8));
+
+        AlertDialog[] dialogRef = new AlertDialog[1];
+
+        for (int idx : indices) {
+            String name = appNames.get(idx);
+            String pkg = appPackages.get(idx);
+            ApplicationInfo appInfo = apps.get(idx);
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(16), dp(12), dp(16), dp(12));
+
+            // App icon
+            ImageView icon = new ImageView(this);
+            try {
+                Drawable appIcon = pm.getApplicationIcon(appInfo);
+                icon.setImageDrawable(appIcon);
+            } catch (Exception e) {
+                icon.setImageResource(android.R.drawable.sym_def_app_icon);
+            }
+            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(36), dp(36));
+            iconParams.setMarginEnd(dp(14));
+            icon.setLayoutParams(iconParams);
+            row.addView(icon);
+
+            // Text column
+            LinearLayout textCol = new LinearLayout(this);
+            textCol.setOrientation(LinearLayout.VERTICAL);
+            textCol.setLayoutParams(new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+            TextView nameView = createText(name, 14, TEXT_PRIMARY, false);
+            textCol.addView(nameView);
+
+            TextView pkgView = createText(pkg, 11, TEXT_SECONDARY, false);
+            pkgView.setTypeface(Typeface.MONOSPACE);
+            textCol.addView(pkgView);
+
+            row.addView(textCol);
+
+            // Click to select
+            row.setOnClickListener(v -> {
+                packageInput.setText(pkg);
+                if (dialogRef[0] != null) dialogRef[0].dismiss();
+            });
+
+            // Divider
+            list.addView(row);
+            if (idx != indices.get(indices.size() - 1)) {
+                View divider = new View(this);
+                divider.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 1));
+                divider.setBackgroundColor(BORDER_COLOR);
+                list.addView(divider);
+            }
+        }
+
+        scrollView.addView(list);
+        builder.setView(scrollView);
+        builder.setNegativeButton("Cancel", null);
+        dialogRef[0] = builder.create();
+        dialogRef[0].show();
     }
 
     private void saveAndActivate() {
