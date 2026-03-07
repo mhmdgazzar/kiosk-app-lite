@@ -98,13 +98,25 @@ public class KioskActivity extends Activity {
     private Handler handler;
     private Runnable monitorRunnable;
     private boolean kioskActive = true;
-    private boolean firstLaunch = true;
     private boolean isResumed = false;
     private String targetPackage;
 
     // Exit gesture tracking
     private int tapCount = 0;
     private long lastTapTime = 0;
+    /** When true, auto-relaunch is paused to let the user complete the exit gesture. */
+    private boolean exitGestureActive = false;
+    /** How long to pause relaunch when exit gesture starts (ms). */
+    private static final int EXIT_GESTURE_PAUSE_MS = 5000;
+    /** Runnable that resets the exit gesture after timeout. */
+    private Runnable exitGestureTimeoutRunnable;
+
+    /** Reusable runnable for delayed relaunch — stored so it can be cancelled. */
+    private final Runnable relaunchRunnable = () -> {
+        if (kioskActive && isResumed && !exitGestureActive) {
+            launchTargetApp();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -152,13 +164,12 @@ public class KioskActivity extends Activity {
 
         handler = new Handler();
 
-        // Launch target app immediately (only if configured)
-        if (configured) {
-            launchTargetApp();
-        }
-
         // Begin the monitoring loop
         startMonitoring();
+
+        // NOTE: Target app is launched from onWindowFocusChanged(), not here.
+        // This ensures the KioskActivity window is visible first, giving
+        // the user a chance to perform the exit gesture (5-tap in corner).
     }
 
     /**
@@ -190,7 +201,7 @@ public class KioskActivity extends Activity {
         monitorRunnable = new Runnable() {
             @Override
             public void run() {
-                if (kioskActive && isResumed) {
+                if (kioskActive && isResumed && !exitGestureActive) {
                     launchTargetApp();
                 }
                 if (kioskActive) {
@@ -223,8 +234,30 @@ public class KioskActivity extends Activity {
             tapCount++;
             lastTapTime = now;
 
+            // On first tap, pause auto-relaunch so user has time to complete the gesture
+            if (tapCount == 1) {
+                exitGestureActive = true;
+                // Cancel any pending relaunch callbacks
+                handler.removeCallbacks(relaunchRunnable);
+                // Auto-reset after timeout if user doesn't complete the gesture
+                exitGestureTimeoutRunnable = () -> {
+                    exitGestureActive = false;
+                    tapCount = 0;
+                    // Resume kiosk — relaunch target app
+                    if (kioskActive && isResumed) {
+                        launchTargetApp();
+                    }
+                };
+                handler.postDelayed(exitGestureTimeoutRunnable, EXIT_GESTURE_PAUSE_MS);
+            }
+
             if (tapCount >= TAP_COUNT_REQUIRED) {
                 tapCount = 0;
+                // Cancel the timeout — PIN dialog will handle the state
+                if (exitGestureTimeoutRunnable != null) {
+                    handler.removeCallbacks(exitGestureTimeoutRunnable);
+                }
+                // Keep exitGestureActive = true while PIN dialog is visible
                 showPinDialog();
             }
         }
@@ -275,8 +308,24 @@ public class KioskActivity extends Activity {
             }
         });
 
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-        builder.show();
+        builder.setNegativeButton("Cancel", (dialog, which) -> {
+            dialog.cancel();
+            // Resume kiosk mode — relaunch target app
+            exitGestureActive = false;
+            if (kioskActive) {
+                launchTargetApp();
+            }
+        });
+
+        AlertDialog dialog = builder.create();
+        dialog.setOnCancelListener(d -> {
+            // Back button or tap outside dialog
+            exitGestureActive = false;
+            if (kioskActive) {
+                launchTargetApp();
+            }
+        });
+        dialog.show();
     }
 
     @Override
@@ -287,14 +336,24 @@ public class KioskActivity extends Activity {
         // Reload target package in case settings changed
         targetPackage = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                 .getString(TARGET_KEY, DEFAULT_TARGET_PACKAGE);
+    }
 
-        boolean configured = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .getBoolean("configured", false);
-
-        if (kioskActive && configured && !firstLaunch) {
-            handler.postDelayed(this::launchTargetApp, 800);
+    /**
+     * Called when this window gains or loses focus.
+     * This is the reliable signal that the activity is truly visible and interactive.
+     * We delay relaunch from here so the user has a window to perform the exit gesture.
+     */
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && kioskActive && !exitGestureActive) {
+            boolean configured = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .getBoolean("configured", false);
+            if (configured) {
+                handler.removeCallbacks(relaunchRunnable);
+                handler.postDelayed(relaunchRunnable, 2000);
+            }
         }
-        firstLaunch = false;
     }
 
     @Override
