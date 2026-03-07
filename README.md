@@ -16,6 +16,7 @@ A minimal, open-source **Android** kiosk launcher that locks a device to a singl
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/arrow-counter-clockwise.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/arrow-counter-clockwise.svg"><img src="docs/icons/dark/arrow-counter-clockwise.svg" width="18" /></picture> **Auto-Relaunch** | If the app closes or crashes, it relaunches within 3 seconds |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/rocket-launch.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/rocket-launch.svg"><img src="docs/icons/dark/rocket-launch.svg" width="18" /></picture> **Boot Auto-Start** | Launches the target app immediately after device boot |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/wifi-high.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/wifi-high.svg"><img src="docs/icons/dark/wifi-high.svg" width="18" /></picture> **Quick Settings Access** | Status bar remains accessible for WiFi/Bluetooth toggles |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/wrench.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/wrench.svg"><img src="docs/icons/dark/wrench.svg" width="18" /></picture> **Settings UI** | On-device configuration — pick target app from a list or enter package name |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/key.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/key.svg"><img src="docs/icons/dark/key.svg" width="18" /></picture> **PIN-Protected Exit** | Exit kiosk mode via hidden gesture + PIN code |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/terminal-window.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/terminal-window.svg"><img src="docs/icons/dark/terminal-window.svg" width="18" /></picture> **ADB Configuration** | Change target app and PIN remotely via ADB — no rebuild needed |
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/shield-check.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/shield-check.svg"><img src="docs/icons/dark/shield-check.svg" width="18" /></picture> **ADB-Safe** | Does NOT use Device Owner/Admin — ADB always remains accessible |
@@ -38,19 +39,17 @@ A minimal, open-source **Android** kiosk launcher that locks a device to a singl
 >
 > Tested on **Sunmi T2** POS terminal (Android 7.1.1). Works on any Android device — tablets, phones, POS terminals, digital signage displays.
 
-## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/monitor.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/monitor.svg"><img src="docs/icons/dark/monitor.svg" width="20" /></picture> UI Wireframe
-
-The kiosk operates in a simple 3-state flow:
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/monitor.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/monitor.svg"><img src="docs/icons/dark/monitor.svg" width="20" /></picture> Screenshots
 
 <p align="center">
-  <img src="docs/wireframe.png" alt="Kiosk App Lite — UI Wireframe" width="700" />
+  <img src="docs/screenshot-settings.png" alt="Settings UI" width="270" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshot-app-picker.png" alt="App Picker" width="270" />
 </p>
 
-| State | Description |
-|---|---|
-| **Boot / Home Press** | Brief transition screen shown when device boots or user presses Home. Immediately launches the target app. |
-| **Target App Running** | The locked app runs fullscreen. Status bar stays accessible for WiFi/Bluetooth. The bottom-right corner is the hidden exit zone. |
-| **PIN Exit Dialog** | After 5 quick taps in the bottom-right corner, a PIN dialog appears. Correct PIN exits kiosk mode. |
+<p align="center">
+  <em>Settings screen &nbsp;·&nbsp; App picker dialog</em>
+</p>
 
 ## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/rocket-launch.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/rocket-launch.svg"><img src="docs/icons/dark/rocket-launch.svg" width="20" /></picture> Quick Start
 
