@@ -173,7 +173,7 @@ public class KioskActivity extends Activity {
         subtitle.setPadding(0, 16, 0, 0);
 
         if (kioskActive) {
-            subtitle.setText("Launching " + targetPackage + "…");
+            subtitle.setText("Tap screen 5× to exit");
         } else {
             subtitle.setText("Kiosk mode disabled. Open Settings to re-enable.");
         }
@@ -181,21 +181,6 @@ public class KioskActivity extends Activity {
         center.addView(title);
         center.addView(subtitle);
         root.addView(center);
-
-        // Subtle exit hint in bottom-right corner
-        if (kioskActive) {
-            TextView exitHint = new TextView(this);
-            exitHint.setText("● ● ●");
-            exitHint.setTextColor(0x33FFFFFF); // Very subtle
-            exitHint.setTextSize(10);
-            exitHint.setPadding(0, 0, 24, 24);
-            FrameLayout.LayoutParams hintLp = new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    Gravity.BOTTOM | Gravity.END);
-            exitHint.setLayoutParams(hintLp);
-            root.addView(exitHint);
-        }
 
         setContentView(root);
 
@@ -243,60 +228,40 @@ public class KioskActivity extends Activity {
 
     /**
      * Handle touch events for the exit gesture.
-     * Requires {@link #TAP_COUNT_REQUIRED} taps in the bottom-right corner
+     * Requires {@link #TAP_COUNT_REQUIRED} taps ANYWHERE on screen
      * within {@link #TAP_TIMEOUT_MS} milliseconds to trigger the PIN dialog.
      */
     private void handleTouch(MotionEvent event) {
-        Log.d("KioskExit", "handleTouch: action=" + event.getAction()
-                + " at (" + event.getRawX() + "," + event.getRawY() + ")");
         if (event.getAction() != MotionEvent.ACTION_DOWN) return;
 
-        float density = getResources().getDisplayMetrics().density;
-        float cornerSize = 150 * density;
-        // Use raw screen coordinates (reliable regardless of view hierarchy)
-        float screenWidth = getResources().getDisplayMetrics().widthPixels;
-        float screenHeight = getResources().getDisplayMetrics().heightPixels;
+        long now = System.currentTimeMillis();
+        if (now - lastTapTime > TAP_TIMEOUT_MS) {
+            tapCount = 0;
+        }
+        tapCount++;
+        lastTapTime = now;
+        Log.d("KioskExit", "Tap #" + tapCount + "/" + TAP_COUNT_REQUIRED);
 
-        Log.d("KioskExit", "Touch at (" + event.getRawX() + "," + event.getRawY()
-                + ") screen=" + screenWidth + "x" + screenHeight
-                + " cornerThreshold=(" + (screenWidth - cornerSize) + "," + (screenHeight - cornerSize) + ")");
-
-        // Bottom-right corner detection (using raw screen coordinates)
-        if (event.getRawX() > screenWidth - cornerSize && event.getRawY() > screenHeight - cornerSize) {
-            long now = System.currentTimeMillis();
-            if (now - lastTapTime > TAP_TIMEOUT_MS) {
+        // On first tap, pause auto-relaunch so user has time to complete the gesture
+        if (tapCount == 1) {
+            exitGestureActive = true;
+            handler.removeCallbacks(relaunchRunnable);
+            exitGestureTimeoutRunnable = () -> {
+                exitGestureActive = false;
                 tapCount = 0;
-            }
-            tapCount++;
-            lastTapTime = now;
-            Log.d("KioskExit", "Corner tap #" + tapCount + "/" + TAP_COUNT_REQUIRED);
-
-            // On first tap, pause auto-relaunch so user has time to complete the gesture
-            if (tapCount == 1) {
-                exitGestureActive = true;
-                // Cancel any pending relaunch callbacks
-                handler.removeCallbacks(relaunchRunnable);
-                // Auto-reset after timeout if user doesn't complete the gesture
-                exitGestureTimeoutRunnable = () -> {
-                    exitGestureActive = false;
-                    tapCount = 0;
-                    // Resume kiosk — relaunch target app
-                    if (kioskActive && isResumed) {
-                        launchTargetApp();
-                    }
-                };
-                handler.postDelayed(exitGestureTimeoutRunnable, EXIT_GESTURE_PAUSE_MS);
-            }
-
-            if (tapCount >= TAP_COUNT_REQUIRED) {
-                tapCount = 0;
-                // Cancel the timeout — PIN dialog will handle the state
-                if (exitGestureTimeoutRunnable != null) {
-                    handler.removeCallbacks(exitGestureTimeoutRunnable);
+                if (kioskActive && isResumed) {
+                    launchTargetApp();
                 }
-                // Keep exitGestureActive = true while PIN dialog is visible
-                showPinDialog();
+            };
+            handler.postDelayed(exitGestureTimeoutRunnable, EXIT_GESTURE_PAUSE_MS);
+        }
+
+        if (tapCount >= TAP_COUNT_REQUIRED) {
+            tapCount = 0;
+            if (exitGestureTimeoutRunnable != null) {
+                handler.removeCallbacks(exitGestureTimeoutRunnable);
             }
+            showPinDialog();
         }
         return;
     }
@@ -402,14 +367,6 @@ public class KioskActivity extends Activity {
                 + " exitGestureActive=" + exitGestureActive
                 + " targetPackage=" + targetPackage);
 
-        // Force our task to the front — prevents Digital Wellbeing etc. stealing focus
-        if (kioskActive) {
-            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-            if (am != null) {
-                am.moveTaskToFront(getTaskId(), ActivityManager.MOVE_TASK_WITH_HOME);
-            }
-        }
-
         // If kiosk is disabled, redirect to Settings and stop all callbacks
         if (!kioskActive) {
             handler.removeCallbacks(relaunchRunnable);
@@ -449,17 +406,6 @@ public class KioskActivity extends Activity {
                 handler.postDelayed(relaunchRunnable, RELAUNCH_DELAY_MS);
                 Log.d("KioskExit", "onWindowFocusChanged: scheduled relaunch in " + RELAUNCH_DELAY_MS + "ms");
             }
-        } else if (!hasFocus && kioskActive && !exitGestureActive) {
-            // Another window stole focus (e.g. Digital Wellbeing) — fight back
-            Log.d("KioskExit", "onWindowFocusChanged: focus stolen! Reclaiming...");
-            handler.postDelayed(() -> {
-                if (kioskActive && isResumed && !exitGestureActive) {
-                    ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-                    if (am != null) {
-                        am.moveTaskToFront(getTaskId(), ActivityManager.MOVE_TASK_WITH_HOME);
-                    }
-                }
-            }, 300);
         }
     }
 
