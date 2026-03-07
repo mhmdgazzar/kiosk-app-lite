@@ -79,14 +79,15 @@ public class KioskActivity extends Activity {
 
 
     /** Delay (ms) before relaunching target app when KioskActivity gains focus.
-     *  This gives the user a window to start the exit gesture. */
-    private static final int RELAUNCH_DELAY_MS = 3500;
+     *  Must be long enough for a human to read the instruction and start tapping.
+     *  The first tap cancels this timer, giving the user unlimited time to finish. */
+    private static final int RELAUNCH_DELAY_MS = 8000;
 
-    /** Number of taps required in the exit corner to trigger the PIN dialog. */
+    /** Number of taps required to trigger the PIN dialog. */
     private static final int TAP_COUNT_REQUIRED = 5;
 
     /** Time window (ms) in which all taps must occur. */
-    private static final int TAP_TIMEOUT_MS = 3000;
+    private static final int TAP_TIMEOUT_MS = 5000;
 
     /** SharedPreferences file name. */
     static final String PREFS_NAME = "kiosk_prefs";
