@@ -201,8 +201,10 @@ public class KioskActivity extends Activity {
 
         setContentView(root);
 
-        // Touch listener for the exit gesture (multi-tap in corner)
-        root.setOnTouchListener(this::handleTouch);
+        // NOTE: Touch handling is done via dispatchTouchEvent() at the Activity level,
+        // NOT via root.setOnTouchListener(). This ensures touches are received even when
+        // another window (e.g. Digital Wellbeing) briefly steals focus.
+        Log.d("KioskExit", "onCreate: layout set, root=" + root);
 
         handler = new Handler();
 
@@ -257,24 +259,40 @@ public class KioskActivity extends Activity {
     }
 
     /**
+     * Intercept ALL touch events at the Activity level.
+     * This is more reliable than View.OnTouchListener because it fires even when
+     * the window focus is contested by overlays or other activities.
+     */
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (kioskActive) {
+            handleTouch(event);
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    /**
      * Handle touch events for the exit gesture.
      * Requires {@link #TAP_COUNT_REQUIRED} taps in the bottom-right corner
      * within {@link #TAP_TIMEOUT_MS} milliseconds to trigger the PIN dialog.
      */
-    private boolean handleTouch(View v, MotionEvent event) {
-        if (event.getAction() != MotionEvent.ACTION_DOWN) return false;
+    private void handleTouch(MotionEvent event) {
+        Log.d("KioskExit", "handleTouch: action=" + event.getAction()
+                + " at (" + event.getRawX() + "," + event.getRawY() + ")");
+        if (event.getAction() != MotionEvent.ACTION_DOWN) return;
 
         float density = getResources().getDisplayMetrics().density;
         float cornerSize = 150 * density;
-        float screenWidth = v.getWidth();
-        float screenHeight = v.getHeight();
+        // Use raw screen coordinates (reliable regardless of view hierarchy)
+        float screenWidth = getResources().getDisplayMetrics().widthPixels;
+        float screenHeight = getResources().getDisplayMetrics().heightPixels;
 
-        Log.d("KioskExit", "Touch at (" + event.getX() + "," + event.getY()
+        Log.d("KioskExit", "Touch at (" + event.getRawX() + "," + event.getRawY()
                 + ") screen=" + screenWidth + "x" + screenHeight
                 + " cornerThreshold=(" + (screenWidth - cornerSize) + "," + (screenHeight - cornerSize) + ")");
 
-        // Bottom-right corner detection
-        if (event.getX() > screenWidth - cornerSize && event.getY() > screenHeight - cornerSize) {
+        // Bottom-right corner detection (using raw screen coordinates)
+        if (event.getRawX() > screenWidth - cornerSize && event.getRawY() > screenHeight - cornerSize) {
             long now = System.currentTimeMillis();
             if (now - lastTapTime > TAP_TIMEOUT_MS) {
                 tapCount = 0;
@@ -310,7 +328,7 @@ public class KioskActivity extends Activity {
                 showPinDialog();
             }
         }
-        return true;
+        return;
     }
 
     /**
@@ -411,6 +429,10 @@ public class KioskActivity extends Activity {
         // Reload kiosk state — it may have changed via SettingsActivity or PIN exit
         kioskActive = prefs.getBoolean(KIOSK_ACTIVE_KEY, true);
 
+        Log.d("KioskExit", "onResume: kioskActive=" + kioskActive
+                + " exitGestureActive=" + exitGestureActive
+                + " targetPackage=" + targetPackage);
+
         // If kiosk is disabled, redirect to Settings and stop all callbacks
         if (!kioskActive) {
             handler.removeCallbacks(relaunchRunnable);
@@ -419,6 +441,16 @@ public class KioskActivity extends Activity {
                 handler.removeCallbacks(exitGestureTimeoutRunnable);
             }
             startActivity(new Intent(this, SettingsActivity.class));
+        } else if (!exitGestureActive) {
+            // Schedule relaunch from onResume as well — onWindowFocusChanged(true)
+            // may never fire if another app steals focus (e.g. Digital Wellbeing)
+            boolean configured = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .getBoolean("configured", false);
+            if (configured) {
+                handler.removeCallbacks(relaunchRunnable);
+                handler.postDelayed(relaunchRunnable, RELAUNCH_DELAY_MS);
+                Log.d("KioskExit", "onResume: scheduled relaunch in " + RELAUNCH_DELAY_MS + "ms");
+            }
         }
     }
 
@@ -430,12 +462,16 @@ public class KioskActivity extends Activity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        Log.d("KioskExit", "onWindowFocusChanged: hasFocus=" + hasFocus
+                + " kioskActive=" + kioskActive
+                + " exitGestureActive=" + exitGestureActive);
         if (hasFocus && kioskActive && !exitGestureActive) {
             boolean configured = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                     .getBoolean("configured", false);
             if (configured) {
                 handler.removeCallbacks(relaunchRunnable);
                 handler.postDelayed(relaunchRunnable, RELAUNCH_DELAY_MS);
+                Log.d("KioskExit", "onWindowFocusChanged: scheduled relaunch in " + RELAUNCH_DELAY_MS + "ms");
             }
         }
     }
