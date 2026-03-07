@@ -74,9 +74,10 @@ public class KioskActivity extends Activity {
 
 
     /** Delay (ms) before relaunching target app when KioskActivity gains focus.
-     *  Must be long enough for a human to read the instruction and start tapping.
-     *  The first tap cancels this timer, giving the user unlimited time to finish. */
-    private static final int RELAUNCH_DELAY_MS = 8000;
+     *  Kept short so Home press immediately returns to target app.
+     *  The first tap within this window cancels the relaunch and starts
+     *  the exit gesture (5 taps) with a full EXIT_GESTURE_PAUSE_MS window. */
+    private static final int RELAUNCH_DELAY_MS = 500;
 
     /** Number of taps required to trigger the PIN dialog. */
     private static final int TAP_COUNT_REQUIRED = 5;
