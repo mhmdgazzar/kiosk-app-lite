@@ -127,17 +127,19 @@ public class KioskActivity extends Activity {
 
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
-        // On first launch, show settings to let user configure target app
-        boolean configured = prefs.getBoolean("configured", false);
-        if (!configured) {
-            startActivity(new Intent(this, SettingsActivity.class));
-        }
-
         // Load configured target package
         targetPackage = prefs.getString(TARGET_KEY, DEFAULT_TARGET_PACKAGE);
 
         // Load persisted kiosk state (defaults to true)
         kioskActive = prefs.getBoolean(KIOSK_ACTIVE_KEY, true);
+        boolean configured = prefs.getBoolean("configured", false);
+
+        // If not configured or kiosk is disabled, go straight to SettingsActivity
+        if (!configured || !kioskActive) {
+            startActivity(new Intent(this, SettingsActivity.class));
+            // Don't finish() — this activity stays as the Home fallback
+            // but doesn't block the user from interacting with Settings
+        }
 
         // Keep screen on (important for POS terminals)
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
