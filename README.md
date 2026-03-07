@@ -8,16 +8,16 @@ A minimal, open-source **Android** kiosk launcher that locks a device to a singl
 
 | Feature | Description |
 |---|---|
-| <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/lock-simple.svg" width="18" /> **Single-App Lock** | Automatically launches and locks the device to your chosen app |
-| <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/arrow-counter-clockwise.svg" width="18" /> **Auto-Relaunch** | If the app closes or crashes, it relaunches within 3 seconds |
-| <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/rocket-launch.svg" width="18" /> **Boot Auto-Start** | Launches the target app immediately after device boot |
-| <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/wifi-high.svg" width="18" /> **Quick Settings Access** | Status bar remains accessible for WiFi/Bluetooth toggles |
-| <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/key.svg" width="18" /> **PIN-Protected Exit** | Exit kiosk mode via hidden gesture + PIN code |
-| <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/terminal-window.svg" width="18" /> **ADB Configuration** | Change target app and PIN remotely via ADB — no rebuild needed |
-| <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/shield-check.svg" width="18" /> **ADB-Safe** | Does NOT use Device Owner/Admin — ADB always remains accessible |
-| <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/package.svg" width="18" /> **Tiny Footprint** | ~1.6 MB APK, minimal resource usage |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/lock-simple.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/lock-simple.svg"><img src="docs/icons/dark/lock-simple.svg" width="18" /></picture> **Single-App Lock** | Automatically launches and locks the device to your chosen app |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/arrow-counter-clockwise.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/arrow-counter-clockwise.svg"><img src="docs/icons/dark/arrow-counter-clockwise.svg" width="18" /></picture> **Auto-Relaunch** | If the app closes or crashes, it relaunches within 3 seconds |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/rocket-launch.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/rocket-launch.svg"><img src="docs/icons/dark/rocket-launch.svg" width="18" /></picture> **Boot Auto-Start** | Launches the target app immediately after device boot |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/wifi-high.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/wifi-high.svg"><img src="docs/icons/dark/wifi-high.svg" width="18" /></picture> **Quick Settings Access** | Status bar remains accessible for WiFi/Bluetooth toggles |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/key.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/key.svg"><img src="docs/icons/dark/key.svg" width="18" /></picture> **PIN-Protected Exit** | Exit kiosk mode via hidden gesture + PIN code |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/terminal-window.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/terminal-window.svg"><img src="docs/icons/dark/terminal-window.svg" width="18" /></picture> **ADB Configuration** | Change target app and PIN remotely via ADB — no rebuild needed |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/shield-check.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/shield-check.svg"><img src="docs/icons/dark/shield-check.svg" width="18" /></picture> **ADB-Safe** | Does NOT use Device Owner/Admin — ADB always remains accessible |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/package.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/package.svg"><img src="docs/icons/dark/package.svg" width="18" /></picture> **Tiny Footprint** | ~1.6 MB APK, minimal resource usage |
 
-## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/android-logo.svg" width="20" /> Android Compatibility
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/android-logo.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/android-logo.svg"><img src="docs/icons/dark/android-logo.svg" width="20" /></picture> Android Compatibility
 
 | Android Version | API Level | Supported |
 |---|---|---|
@@ -34,7 +34,7 @@ A minimal, open-source **Android** kiosk launcher that locks a device to a singl
 >
 > Tested on **Sunmi T2** POS terminal (Android 7.1.1). Works on any Android device — tablets, phones, POS terminals, digital signage displays.
 
-## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/monitor.svg" width="20" /> UI Wireframe
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/monitor.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/monitor.svg"><img src="docs/icons/dark/monitor.svg" width="20" /></picture> UI Wireframe
 
 The kiosk operates in a simple 3-state flow:
 
@@ -48,7 +48,7 @@ The kiosk operates in a simple 3-state flow:
 | **Target App Running** | The locked app runs fullscreen. Status bar stays accessible for WiFi/Bluetooth. The bottom-right corner is the hidden exit zone. |
 | **PIN Exit Dialog** | After 5 quick taps in the bottom-right corner, a PIN dialog appears. Correct PIN exits kiosk mode. |
 
-## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/rocket-launch.svg" width="20" /> Quick Start
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/rocket-launch.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/rocket-launch.svg"><img src="docs/icons/dark/rocket-launch.svg" width="20" /></picture> Quick Start
 
 ### 1. Install via ADB
 
@@ -86,14 +86,14 @@ adb shell am broadcast -a com.sunmikiosk.launcher.SET_PIN \
   -n com.sunmikiosk.launcher/.ConfigReceiver
 ```
 
-## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/sign-out.svg" width="20" /> Exiting Kiosk Mode
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/sign-out.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/sign-out.svg"><img src="docs/icons/dark/sign-out.svg" width="20" /></picture> Exiting Kiosk Mode
 
 1. **Tap 5 times quickly** in the **bottom-right corner** of the screen
 2. A PIN dialog will appear
 3. Enter the PIN (default: `1234`)
 4. Kiosk mode is disabled — you return to the normal Android home screen
 
-## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/wrench.svg" width="20" /> Build from Source
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/wrench.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/wrench.svg"><img src="docs/icons/dark/wrench.svg" width="20" /></picture> Build from Source
 
 ### Prerequisites
 - Java JDK 11+ (or 17)
@@ -116,7 +116,7 @@ The APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/tree-structure.svg" width="20" /> Architecture
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/tree-structure.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/tree-structure.svg"><img src="docs/icons/dark/tree-structure.svg" width="20" /></picture> Architecture
 
 ```
 app/src/main/java/com/sunmikiosk/launcher/
@@ -142,11 +142,11 @@ Many kiosk apps require `dpm set-device-owner`, which gives them system-level co
 
 Kiosk App Lite takes a deliberately simpler approach: it's just a launcher. It doesn't need — and doesn't request — any special permissions beyond `RECEIVE_BOOT_COMPLETED`.
 
-## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/git-merge.svg" width="20" /> Contributing
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/git-merge.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/git-merge.svg"><img src="docs/icons/dark/git-merge.svg" width="20" /></picture> Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
-## <img src="https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/scales.svg" width="20" /> License
+## <picture><source media="(prefers-color-scheme: dark)" srcset="docs/icons/light/scales.svg"><source media="(prefers-color-scheme: light)" srcset="docs/icons/dark/scales.svg"><img src="docs/icons/dark/scales.svg" width="20" /></picture> License
 
 This project is licensed under the [MIT License](LICENSE).
 
